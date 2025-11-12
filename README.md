@@ -79,3 +79,96 @@ Si desde Profile se quiere validar autenticación de IAM:
 - En DDD, **una ACL NO es una lista de control de acceso de redes**, sino una *Anti-Corruption Layer*.
 - Es ideal cuando tienes contextos que gestionan conceptos similares pero requieren reglas distintas (como IAM y Profile).
 - Facilita integración y colaboración sin acoplar ni corromper los modelos internos, asegurando **escalabilidad y mantenibilidad real** en el tiempo.
+
+
+---
+
+# Configuración de API Gateway con Ocelot
+
+## 1️⃣ Crear el proyecto del gateway
+
+Crea una carpeta (por ejemplo, ApiGateway) y ejecuta el siguiente comando:
+
+```bash
+dotnet new web -n ApiGateway
+```
+
+## 2️⃣ Instalar el paquete Ocelot
+
+Dentro del proyecto creado, instala Ocelot:
+
+```bash
+dotnet add package Ocelot
+```
+
+## 3️⃣ Agregar archivo de configuración ocelot.json
+
+Crea un archivo llamado **ocelot.json** en la raíz del proyecto (al mismo nivel que el .csproj y Program.cs).
+
+Ejemplo de configuración mínima para enrutar /users y /profiles a sus respectivos microservicios:
+
+```bash
+{
+  "Routes": [
+    {
+      "DownstreamPathTemplate": "/api/v1/users/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        { "Host": "localhost", "Port": 5001 }
+      ],
+      "UpstreamPathTemplate": "/users/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ]
+    },
+    {
+      "DownstreamPathTemplate": "/api/v1/profiles/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        { "Host": "localhost", "Port": 5002 }
+      ],
+      "UpstreamPathTemplate": "/profiles/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ]
+    }
+  ],
+  "GlobalConfiguration": {
+    "BaseUrl": "http://localhost:7000"
+  }
+}
+```
+
+## 4️⃣ Modificar Program.cs
+
+Reemplaza el contenido de Program.cs por lo siguiente:
+
+```bash
+using Ocelot.DependencyInjection;
+using Ocelot.Middleware;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Configuration.AddJsonFile("ocelot.json", optional: false, reloadOnChange: true);
+builder.Services.AddOcelot();
+
+var app = builder.Build();
+
+await app.UseOcelot();
+
+app.Run();
+```
+
+## 5️⃣ Ejecutar los microservicios y el gateway
+
+Inicia tus microservicios IAM (puerto 5001) y Profile (puerto 5002).
+
+Luego, inicia el API Gateway:
+
+```bash
+dotnet run
+```
+
+## 6️⃣ Probar el Gateway
+
+Accede a tus endpoints a través de:
+
+👉 http://localhost:7000/users/
+
+👉 http://localhost:7000/profiles/
